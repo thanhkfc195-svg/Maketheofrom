@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binary Diff & Patcher — So sánh & Tạo file nhị phân mới</title>
+<style>
+
+  :root{--bg:#050510;--panel:#10122b;--line:#292b62;--ink:#eef0ff;--muted:#858ab5;--cyan:#35f2ff;--purple:#a855f7;--pink:#ff3cac;--green:#51f6b2;--red:#ff5577;--yellow:#ffd166;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+  *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-height:100vh;color:var(--ink);font:14px/1.6 var(--sans);padding:20px 16px 80px;overflow-x:hidden;background:radial-gradient(circle at 8% 0%,#29124c 0,transparent 30%),radial-gradient(circle at 92% 10%,#083d4a 0,transparent 28%),linear-gradient(145deg,#050510,#0b0b20)}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.17;background-image:linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(#000,transparent 80%)}.wrap{position:relative;max-width:1160px;margin:auto}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:8px 0 18px;margin-bottom:28px;border-bottom:1px solid #a855f755}.brand{display:flex;align-items:center;gap:13px}.brand-gif{width:74px;height:74px;object-fit:cover;border-radius:50%;border:1px solid #9400D3;box-shadow:0 0 15px #9400D3 inset,0 0 35px #9400D3,0 0 50px #35f2ff44}.brand-name{display:block;color:var(--cyan);font:700 12px var(--mono);letter-spacing:.2em}.brand-tag{display:block;color:var(--muted);font-size:12px}.hud{color:var(--muted);font:11px var(--mono);letter-spacing:.1em;text-transform:uppercase}.hud i{display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}
+  .hero{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:end;margin-bottom:26px}.eyebrow{margin:0 0 9px;color:var(--pink);font:11px var(--mono);letter-spacing:.2em;text-transform:uppercase}.eyebrow:before{content:"// ";color:var(--cyan)}h1{margin:0 0 11px;font:800 clamp(28px,5vw,48px)/1.04 var(--sans);letter-spacing:-.05em;text-transform:uppercase;text-shadow:0 0 25px #a855f766}h1 span{color:var(--cyan)}.sub{max-width:740px;margin:0;color:var(--muted);font-size:14px}.badge{padding:8px 11px;border:1px solid var(--purple);border-radius:4px;color:#dbb7ff;font:10px var(--mono);text-transform:uppercase;white-space:nowrap;box-shadow:0 0 18px #a855f733}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:17px}.drop{position:relative;padding:25px 19px;border:1px dashed #474b91;border-radius:8px;background:linear-gradient(135deg,#11132d,#08091d);cursor:pointer;transition:.2s;overflow:hidden}.drop:after{content:"DROP ZONE";position:absolute;right:13px;top:11px;color:#555987;font:9px var(--mono);letter-spacing:.14em}.drop:hover,.drop.over{border-color:var(--cyan);transform:translateY(-2px);box-shadow:0 0 0 1px #35f2ff33,0 0 28px #35f2ff2b}.drop b{display:block;margin-bottom:7px;color:var(--cyan);font:700 13px var(--mono);letter-spacing:.07em;text-transform:uppercase}.drop span{color:var(--muted);font-size:12px;word-break:break-all}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .actions{display:flex;gap:11px;align-items:center;flex-wrap:wrap;padding:15px;border:1px solid #292b62;background:#08091dcc;border-radius:8px}.actions:before{content:"SYSTEM COMMANDS";margin-right:auto;color:#626893;font:10px var(--mono);letter-spacing:.14em}button{padding:11px 17px;border:1px solid var(--cyan);border-radius:4px;background:linear-gradient(100deg,var(--cyan),#78ffd9);color:#050510;font:700 12px var(--mono);text-transform:uppercase;cursor:pointer;transition:.2s;box-shadow:0 0 18px #35f2ff33}button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 0 28px #35f2ff66}button:disabled{opacity:.3;cursor:not-allowed;filter:grayscale(1)}button.secondary{border-color:var(--purple);background:linear-gradient(100deg,#311255,#5b1e86);color:#f0dcff}
+  .msg{margin-bottom:12px;padding:10px 13px;border-radius:5px;background:#0a0b1eeb;font:12px var(--mono)}.msg.ok{color:var(--green);border:1px solid #51f6b288;box-shadow:inset 3px 0 var(--green)}.msg.bad{color:var(--red);border:1px solid #ff557788;box-shadow:inset 3px 0 var(--red)}.msg.warn{color:var(--yellow);border:1px solid #ffd16666;box-shadow:inset 3px 0 var(--yellow)}.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px;margin:17px 0}.stat{padding:13px;border:1px solid var(--line);border-radius:7px;background:linear-gradient(145deg,#11132d,#08091d)}.stat b{display:block;color:var(--cyan);font:700 22px var(--mono);text-shadow:0 0 12px #35f2ff66}.stat span{color:var(--muted);font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase}.stat.bad b{color:var(--red);text-shadow:0 0 12px #ff557766}.panel{margin-bottom:15px;padding:17px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(145deg,#11132deb,#08091df0);box-shadow:0 14px 45px #0004}.panel h2{display:flex;justify-content:space-between;gap:12px;margin:0 0 13px;color:#a8add9;font:11px var(--mono);letter-spacing:.1em;text-transform:uppercase}.panel h2:before{content:"▸";color:var(--pink);margin-right:7px}table.diffrows{display:block;width:100%;overflow-x:auto;border-collapse:collapse;font:11px var(--mono)}table.diffrows th{padding:7px 8px;color:#777eaf;font-weight:400;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}table.diffrows td{padding:6px 8px;white-space:pre;border-bottom:1px solid #292b6288}table.diffrows tr:hover td{background:#35f2ff12}.off{color:#70769f}.hex-a{color:var(--red)}.hex-b{color:var(--green)}.hexview{display:grid;grid-template-columns:1fr 1fr;gap:13px}.hexbox{padding:11px;overflow-x:auto;border:1px solid #20214d;border-radius:5px;background:#050611;font:11px/1.7 var(--mono);box-shadow:inset 0 0 24px #0008}.hexbox .row{display:flex;gap:10px;white-space:pre}.hexbox .addr{color:#62688e}.hexbox .byte{padding:0 1px}.hexbox .byte.diff{color:#ff8da4;border-radius:2px;background:#ff557733;box-shadow:0 0 8px #ff557744}.nav{display:flex;gap:8px;align-items:center;color:var(--muted);font:11px var(--mono)}.nav button{padding:5px 10px;font-size:10px;background:#090a20;color:var(--ink);border-color:var(--line);box-shadow:none}@media(max-width:700px){body{padding:13px 11px 55px}.topbar{align-items:flex-start}.brand-gif{width:58px;height:58px}.hud{display:none}.hero{grid-template-columns:1fr}.badge{justify-self:start}.pair,.hexview{grid-template-columns:1fr}.actions:before{width:100%;margin:0 0 2px}.actions button{width:100%}.panel{padding:13px 10px}}
+
+  .unityfs-card{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:7px;background:#08091dcc;font:11px var(--mono)}
+  .unityfs-card.compatible{border-color:#51f6b288;box-shadow:inset 3px 0 var(--green)}
+  .unityfs-card.unsafe{border-color:#ff557788;box-shadow:inset 3px 0 var(--red)}
+  .unityfs-card.unknown{border-color:#ffd16666;box-shadow:inset 3px 0 var(--yellow)}
+  .unityfs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px}
+  .unityfs-item{padding:8px;border:1px solid #292b62;border-radius:4px;background:#050611}
+  .unityfs-item b{display:block;color:var(--cyan);font-size:10px;margin-bottom:3px}
+  .unityfs-item span{color:var(--ink);word-break:break-word}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar"><div class="brand"><img class="brand-gif" src="https://media1.tenor.com/m/mUf7iFh6V18AAAAC/ayla-beautiful.gif" alt="Gaming animated emblem"><div><span class="brand-name">JERRY MOD VIP</span><span class="brand-tag">Tạo File Tự Động</span></div></div><div class="hud"><i></i>  ONLINE</div></header>
+  <section class="hero"><div><p class="eyebrow"> Pro Tools / Gaming </p><h1>JERRY <span>MOD</span> VIP</h1><p class="sub">TOOL TỰ ĐỘNG.</p></div><div class="badge">Vesion · v2.0</div></section>
+  <div class="pair">
+    <div class="drop" id="dropA" data-slot="A">
+      <b>File Gốc</b>
+      <span id="labelA">Kéo thả hoặc bấm để chọn file </span>
+    </div>
+    <div class="drop" id="dropB" data-slot="B">
+      <b>File Chứa Thông số</b>
+      <span id="labelB">Kéo thả hoặc bấm để chọn file </span>
+    </div>
+  </div>
+  <input type="file" id="fileA" class="file-picker" accept="*/*">
+  <input type="file" id="fileB" class="file-picker" accept="*/*">
+
+  <div class="actions">
+    <button id="runBtn">So sánh 2 File</button>
+    <button id="patchBtn" class="secondary" disabled>Tạo & Tải File Mới </button>
+  </div>
+
+  <div id="wasmStatus" class="msg warn" style="margin-top:16px">WASM CODEC: đang khởi tạo từ CDN…</div>
+  <div id="status" style="margin-top:16px"></div>
+  <div id="result"></div>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+let bufA = null, bufB = null, diffOffsets = [];
+let modelA = null, modelB = null; // cấu trúc Unity SerializedFile (nếu nhận diện được)
+let unitySafety = null;
+let comparisonReady = false;
+let wasmCodec = { ready:false, lzma:null, error:null };
+
+/* Codec WASM dạng CDN: chỉ là lớp giải mã/điều phối. Raw UnityFS phải dùng
+   đúng payload của Unity, không được nhầm với container .xz/.lzma. */
+async function initWasmCodec(){
+  const box = el('wasmStatus');
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/lzma-wasm@latest/dist/esm/index.js');
+    if (typeof mod.initWasm === 'function') await mod.initWasm();
+    wasmCodec = {ready:true, lzma:mod, error:null};
+    box.className='msg ok';
+    box.textContent='WASM CODEC: LZMA CDN đã sẵn sàng. Bản repack chỉ được bật sau khi codec và block layout được xác minh.';
+  } catch(e) {
+    wasmCodec = {ready:false, lzma:null, error:e};
+    box.className='msg warn';
+    box.textContent='WASM CODEC: không tải được từ CDN; giữ chế độ kiểm tra an toàn, không repack block nén.';
+  }
+}
+initWasmCodec();
+
+/* ═══════════ typetree reader ═══════════
+   Đọc header + metadata + typetree của file Unity SerializedFile (asset/bundle đã giải nén),
+   để có thể quy đổi offset byte thay đổi -> tên field thực sự thay vì chỉ hex thô.
+   Toàn bộ khối này được bọc try/catch ở nơi gọi: nếu file không phải SerializedFile hợp lệ
+   (hoặc có phiên bản/định dạng chưa hỗ trợ), công cụ tự động rơi về chế độ so sánh hex thuần
+   như bản gốc — không văng lỗi, không chặn luồng chính. */
+
+function enc(s){ return new TextEncoder().encode(s); }
+
+const COMMON = "AABB\0AnimationClip\0AnimationCurve\0AnimationState\0Array\0Base\0BitField\0bitset\0bool\0char\0ColorRGBA\0Component\0data\0deque\0double\0dynamic_array\0FastPropertyName\0first\0float\0Font\0GameObject\0Generic Mono\0GradientNEW\0GUID\0GUIStyle\0int\0list\0long long\0map\0Matrix4x4f\0MdFour\0MonoBehaviour\0MonoScript\0m_ByteSize\0m_Curve\0m_EditorClassIdentifier\0m_EditorHideFlags\0m_Enabled\0m_ExtensionPtr\0m_GameObject\0m_Index\0m_IsArray\0m_IsStatic\0m_MetaFlag\0m_Name\0m_ObjectHideFlags\0m_PrefabInternal\0m_PrefabParentObject\0m_Script\0m_StaticEditorFlags\0m_Type\0m_Version\0Object\0pair\0PPtr<Component>\0PPtr<GameObject>\0PPtr<Material>\0PPtr<MonoBehaviour>\0PPtr<MonoScript>\0PPtr<Object>\0PPtr<Prefab>\0PPtr<Sprite>\0PPtr<TextAsset>\0PPtr<Texture>\0PPtr<Texture2D>\0PPtr<Transform>\0Prefab\0Quaternionf\0Rectf\0RectInt\0RectOffset\0second\0set\0short\0size\0SInt16\0SInt32\0SInt64\0SInt8\0staticvector\0string\0TextAsset\0TextMesh\0Texture\0Texture2D\0Transform\0TypelessData\0UInt16\0UInt32\0UInt64\0UInt8\0unsigned int\0unsigned long long\0unsigned short\0vector\0Vector2f\0Vector3f\0Vector4f\0m_ScriptingClassIdentifier\0Gradient\0Type*\0int2_storage\0int3_storage\0BoundsInt\0m_CorrespondingSourceObject\0m_PrefabInstance\0m_PrefabAsset\0FileSize\0Hash128\0";
+const COMMON_B = enc(COMMON);
+
+// Bảng tên lớp (ClassID) thường gặp — chỉ để hiển thị cho dễ đọc, không cần đầy đủ 100%.
+const CLASS_NAMES = {
+  0:'Object',1:'GameObject',2:'Component',4:'Transform',8:'Behaviour',9:'GameManager',
+  11:'AudioManager',12:'ParticleAnimator',13:'InputManager',18:'EllipsoidParticleEmitter',
+  20:'Camera',21:'Material',23:'MeshRenderer',25:'Renderer',26:'ParticleRenderer',27:'Texture',
+  28:'Texture2D',30:'SceneSettings',33:'MeshFilter',41:'OcclusionPortal',43:'Mesh',
+  45:'Skybox',47:'QualitySettings',48:'Shader',49:'TextAsset',50:'Rigidbody2D',53:'Collider2D',
+  54:'Rigidbody',56:'Collider',57:'Joint',58:'CircleCollider2D',59:'HingeJoint',60:'PolygonCollider2D',
+  61:'BoxCollider2D',62:'PhysicsMaterial2D',64:'MeshCollider',65:'BoxCollider',68:'CapsuleCollider',
+  72:'PhysicMaterial',74:'AnimationClip',75:'ConstantForce',78:'TagManager',81:'AudioListener',
+  82:'AudioSource',83:'AudioClip',84:'RenderTexture',87:'MeshParticleEmitter',89:'Cubemap',
+  90:'Avatar',91:'AnimatorController',93:'RuntimeAnimatorController',95:'Animator',96:'TrailRenderer',
+  98:'DelayedCallManager',102:'TextMesh',104:'RenderSettings',108:'Light',109:'CGProgram',
+  110:'BaseAnimationTrack',111:'Animation',114:'MonoBehaviour',115:'MonoScript',
+  117:'MonoManager',119:'Texture3D',120:'NewAnimationTrack',121:'Projector',122:'LineRenderer',
+  123:'Flare',124:'Halo',125:'LensFlare',126:'FlareLayer',128:'Font',129:'PlayerSettings',
+  131:'GUITexture',134:'PhysicsManager',135:'SphereCollider',136:'CapsuleCollider',
+  137:'SkinnedMeshRenderer',138:'FixedJoint',141:'BuildSettings',142:'AssetBundle',
+  143:'CharacterController',144:'CharacterJoint',145:'SpringJoint',146:'WheelCollider',
+  147:'ResourceManager',150:'PreloadData',153:'AnimatorStateTransition',154:'AnimatorState',
+  156:'TerrainCollider',157:'TerrainData',158:'LightmapSettings',159:'WebCamTexture',
+  180:'AudioReverbFilter',182:'AudioSourceFilter',183:'AudioChorusFilter',184:'AudioReverbZone',
+  185:'AudioEchoFilter',186:'AudioLowPassFilter',187:'AudioHighPassFilter',188:'AudioDistortionFilter',
+  191:'AnimatorStateMachine',193:'CanvasRenderer',194:'Canvas',195:'RectTransform',
+  198:'ParticleSystem',199:'ParticleSystemRenderer',200:'ShaderVariantCollection',
+  205:'LODGroup',206:'BlendTree',207:'Motion',213:'SpriteRenderer',
+  212:'Sprite',221:'ReflectionProbe',222:'ReflectionProbes',223:'Terrain',
+  224:'LightProbeGroup',225:'AnimatorOverrideController',226:'CanvasGroup',
+  241:'AnimatorTransition',258:'ScriptMapper',272:'AudioMixer',273:'AudioMixerController',
+  1001:'PrefabInstance',1032:'AssetImportInProgressProxy'
+};
+
+const ALIGN_FLAG = 0x4000;
+const PRIM_SIZES = {
+  bool:1, char:1, SInt8:1, UInt8:1, 'unsigned char':1,
+  SInt16:2, short:2, UInt16:2, 'unsigned short':2,
+  SInt32:4, int:4, UInt32:4, 'unsigned int':4, float:4, 'Type*':4,
+  SInt64:8, 'long long':8, UInt64:8, 'unsigned long long':8, double:8, FileSize:8
+};
+
+class BinReader {
+  constructor(buf){ this.buf = buf; this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength); this.pos = 0; this.le = false; }
+  align(n){ const r = this.pos % n; if (r) this.pos += (n - r); }
+  u8(){ const v = this.view.getUint8(this.pos); this.pos += 1; return v; }
+  u16(){ const v = this.view.getUint16(this.pos, this.le); this.pos += 2; return v; }
+  i16(){ const v = this.view.getInt16(this.pos, this.le); this.pos += 2; return v; }
+  u32(){ const v = this.view.getUint32(this.pos, this.le); this.pos += 4; return v; }
+  i32(){ const v = this.view.getInt32(this.pos, this.le); this.pos += 4; return v; }
+  u64(){ const v = this.view.getBigUint64(this.pos, this.le); this.pos += 8; return v; }
+  i64(){ const v = this.view.getBigInt64(this.pos, this.le); this.pos += 8; return v; }
+  skip(n){ this.pos += n; }
+  bytes(n){ const v = this.buf.subarray(this.pos, this.pos + n); this.pos += n; return v; }
+  cstr(){ let s = this.pos; while (this.buf[s] !== 0) s++; const str = new TextDecoder().decode(this.buf.subarray(this.pos, s)); this.pos = s + 1; return str; }
+}
+
+function cstrAt(buf, off) {
+  if (off < 0 || off >= buf.length) return '';
+  let e = off; while (e < buf.length && buf[e] !== 0) e++;
+  return new TextDecoder().decode(buf.subarray(off, e));
+}
+
+function readTypeTreeBlob(r, h) {
+  const numNodes = r.i32();
+  const strBufSize = r.i32();
+  if (numNodes < 0 || numNodes > 200000 || strBufSize < 0 || strBufSize > r.buf.length) throw new Error('typetree size bất thường');
+  const nodes = [];
+  for (let i = 0; i < numNodes; i++) {
+    const n = {};
+    n.version = r.u16();
+    n.level = r.u8();
+    n.typeFlags = r.u8();
+    n.typeOffset = r.u32();
+    n.nameOffset = r.u32();
+    n.byteSize = r.i32();
+    n.index = r.i32();
+    n.metaFlag = r.i32();
+    if (h.version >= 19) n.refHash = r.u64();
+    nodes.push(n);
+  }
+  const strBuf = r.bytes(strBufSize);
+  const resolve = (off) => {
+    const isCommon = (off & 0x80000000) !== 0;
+    const real = off & 0x7fffffff;
+    return isCommon ? cstrAt(COMMON_B, real) : cstrAt(strBuf, real);
+  };
+  for (const n of nodes) { n.type = resolve(n.typeOffset); n.name = resolve(n.nameOffset); }
+  return nodes;
+}
+
+function readSerializedType(r, h, enableTypeTree) {
+  const t = {};
+  t.classID = r.i32();
+  if (h.version >= 16) t.isStrippedType = r.u8() !== 0;
+  t.scriptTypeIndex = -1;
+  if (h.version >= 17) t.scriptTypeIndex = r.i16();
+  if (h.version >= 13) {
+    if ((h.version < 16 && t.classID < 0) || (h.version >= 16 && t.classID === 114)) t.scriptID = r.bytes(16);
+    t.oldTypeHash = r.bytes(16);
+  }
+  if (enableTypeTree) {
+    if (h.version >= 12 || h.version === 10) t.nodes = readTypeTreeBlob(r, h);
+    else t.nodes = null; // định dạng cây kiểu đệ quy cũ (<v10) — chưa hỗ trợ, sẽ fallback hex
+    if (h.version >= 21) { const depCount = r.i32(); if (depCount > 0 && depCount < 100000) r.skip(depCount * 4); }
+  }
+  return t;
+}
+
+function readHeader(r) {
+  r.le = false; // header luôn big-endian
+  const h = {};
+  h.metadataSize = r.u32();
+  h.fileSize = r.u32();
+  h.version = r.u32();
+  h.dataOffset = r.u32();
+  h.endianess = 0;
+  if (h.version >= 9) { h.endianess = r.u8(); r.skip(3); }
+  if (h.version >= 22) {
+    h.metadataSize = r.u32();
+    h.fileSize = Number(r.u64());
+    h.dataOffset = Number(r.u64());
+    r.u64();
+  }
+  return h;
+}
+
+function readMetadata(r, h) {
+  const types = [];
+  if (h.version >= 7) r.cstr(); // unityVersion
+  if (h.version >= 8) r.i32(); // targetPlatform
+  let enableTypeTree = true;
+  if (h.version >= 13) enableTypeTree = r.u8() !== 0;
+  const typeCount = r.i32();
+  if (typeCount < 0 || typeCount > 100000) throw new Error('typeCount bất thường');
+  for (let i = 0; i < typeCount; i++) types.push(readSerializedType(r, h, enableTypeTree));
+
+  const objectCount = r.i32();
+  if (objectCount < 0 || objectCount > 5000000) throw new Error('objectCount bất thường');
+  const objects = [];
+  for (let i = 0; i < objectCount; i++) {
+    if (h.version >= 14) r.align(4);
+    const pathId = h.version >= 14 ? r.i64() : BigInt(r.i32());
+    let byteStart = h.version >= 22 ? Number(r.i64()) : r.u32();
+    byteStart += h.dataOffset;
+    const byteSize = r.u32();
+    const typeID = r.i32();
+    let classID, sType;
+    if (h.version < 16) { classID = r.u16(); sType = types.find(t => t.classID === classID); }
+    else { sType = types[typeID]; classID = sType ? sType.classID : -1; }
+    if (h.version < 11) r.u16();
+    if (h.version >= 11 && h.version < 17) r.i16();
+    if (h.version === 15 || h.version === 16) r.u8();
+    objects.push({ pathId, byteStart, byteSize, typeID, classID, type: sType });
+  }
+  return { types, objects, enableTypeTree };
+}
+
+function safeParseUnity(buf) {
+  try {
+    if (!buf || buf.length < 20) return null;
+    const r = new BinReader(buf);
+    const h = readHeader(r);
+    if (h.version < 6 || h.version > 30) return null; // ngoài phạm vi hỗ trợ -> không phải file nhận diện được
+    if (h.metadataSize <= 0 || h.dataOffset < 0 || h.dataOffset > buf.length) return null;
+    r.le = (h.endianess === 0);
+    const meta = readMetadata(r, h);
+    return { header: h, ...meta };
+  } catch (e) {
+    return null; // tránh lỗi vặt: file không đúng định dạng thì âm thầm rơi về chế độ hex thuần
+  }
+}
+
+// Đi bộ typetree thực để tính offset thật của từng field lá trong 1 object cụ thể.
+function walkFields(r, nodes, idx, level, pathPrefix, leaves, guard) {
+  if (guard.n++ > 400000) throw new Error('typetree quá sâu/lặp bất thường');
+  const node = nodes[idx];
+  const start = r.pos;
+  let i = idx + 1;
+  const children = [];
+  while (i < nodes.length && nodes[i].level > level) { if (nodes[i].level === level + 1) children.push(i); i++; }
+  const endIdx = i;
+  const name = pathPrefix ? pathPrefix + '.' + node.name : node.name;
+
+  if (node.type === 'string') {
+    const size = r.i32();
+    r.skip(size);
+    leaves.push({ path: name, start, end: r.pos, type: 'string' });
+  } else if (node.type === 'Array' || (children.length && nodes[children[0]].type === 'Array')) {
+    const arrIdx = node.type === 'Array' ? idx : children[0];
+    walkArrayNode(r, nodes, arrIdx, name, leaves, guard);
+  } else if (children.length === 0) {
+    const size = PRIM_SIZES[node.type] ?? (node.byteSize > 0 ? node.byteSize : 4);
+    const fStart = r.pos;
+    r.skip(size);
+    leaves.push({ path: name, start: fStart, end: r.pos, type: node.type });
+  } else {
+    for (const c of children) walkFields(r, nodes, c, level + 1, name, leaves, guard);
+  }
+  if (node.metaFlag & ALIGN_FLAG) r.align(4);
+  return endIdx;
+}
+
+function walkArrayNode(r, nodes, arrIdx, name, leaves, guard) {
+  const arrNode = nodes[arrIdx];
+  const level = arrNode.level;
+  let i = arrIdx + 1; const children = [];
+  while (i < nodes.length && nodes[i].level > level) { if (nodes[i].level === level + 1) children.push(i); i++; }
+  const sizeStart = r.pos;
+  const count = r.i32();
+  leaves.push({ path: name + '.size', start: sizeStart, end: r.pos, type: 'int' });
+  if (count < 0 || count > 2000000) throw new Error('array size bất thường');
+  const dataIdx = children[children.length - 1];
+  if (dataIdx !== undefined) {
+    for (let k = 0; k < count; k++) walkFields(r, nodes, dataIdx, nodes[dataIdx].level, name + '[' + k + ']', leaves, guard);
+  }
+  if (arrNode.metaFlag & ALIGN_FLAG) r.align(4);
+}
+
+function findObject(model, offset) {
+  if (!model) return null;
+  if (!model._sorted) model._sorted = [...model.objects].sort((a, b) => a.byteStart - b.byteStart);
+  for (const o of model._sorted) { if (offset >= o.byteStart && offset < o.byteStart + o.byteSize) return o; }
+  return null;
+}
+
+// Trả về mô tả field ứng với 1 offset byte cụ thể trong buf (dùng model đã parse của chính buf đó).
+function describeOffset(model, buf, offset) {
+  const obj = findObject(model, offset);
+  if (!obj) return null;
+  const typeName = CLASS_NAMES[obj.classID] || ('ClassID ' + obj.classID);
+  let fieldPath = null;
+  if (obj.type && obj.type.nodes && obj.type.nodes.length) {
+    try {
+      if (!obj._leaves) {
+        const r = new BinReader(buf);
+        r.le = (model.header.endianess === 0);
+        r.pos = obj.byteStart;
+        const leaves = [];
+        walkFields(r, obj.type.nodes, 0, 0, '', leaves, { n: 0 });
+        obj._leaves = leaves;
+      }
+      for (const f of obj._leaves) { if (offset >= f.start && offset < f.end) { fieldPath = f.path; break; } }
+    } catch (e) { /* bỏ qua, không có field-level detail cho object này */ }
+  }
+  return { pathId: obj.pathId.toString(), classID: obj.classID, typeName, fieldPath };
+}
+/* ═══════════ /typetree reader ═══════════ */
+
+/* ═══════════ UnityFS safety reader ═══════════ */
+function asciiAt(buf, off, len) { return new TextDecoder().decode(buf.subarray(off, Math.min(buf.length, off + len))); }
+function be32(view, off) { return view.getUint32(off, false); }
+function be16(view, off) { return view.getUint16(off, false); }
+function be64(view, off) { const n=view.getBigUint64(off,false); return n<=BigInt(Number.MAX_SAFE_INTEGER)?Number(n):null; }
+function readCStringSafe(buf, st) {
+  const start=st.pos;
+  while(st.pos<buf.length && buf[st.pos]!==0) st.pos++;
+  if(st.pos>=buf.length) throw new Error('UnityFS string vượt quá file');
+  const v=new TextDecoder().decode(buf.subarray(start,st.pos)); st.pos++; return v;
+}
+function compressionName(flags) {
+  switch(flags & 0x3f){case 0:return 'none';case 1:return 'LZMA';case 2:return 'LZ4';case 3:return 'LZ4HC';default:return 'unknown-'+(flags&0x3f);}
+}
+/* LZ4 raw block codec. UnityFS dùng block không có frame header; vì vậy
+   không dùng LZ4 frame API. Bộ nén bên dưới luôn tạo literal-only block,
+   hợp lệ và an toàn nhưng ưu tiên độ ổn định hơn tỷ lệ nén. */
+function lz4DecompressBlock(input, expectedSize, maxSize=256*1024*1024){
+  if(!(input instanceof Uint8Array)) input=new Uint8Array(input);
+  if(!Number.isInteger(expectedSize)||expectedSize<0||expectedSize>maxSize) throw new Error('LZ4 output size vượt giới hạn');
+  const out=new Uint8Array(expectedSize); let ip=0, op=0;
+  const readLen=(base)=>{let n=base;if(base===15){let x=255;while(x===255){if(ip>=input.length)throw new Error('LZ4 length thiếu');x=input[ip++];n+=x;if(n>maxSize)throw new Error('LZ4 length vượt giới hạn');}}return n;};
+  while(ip<input.length){
+    const token=input[ip++], litLen=readLen(token>>>4);
+    if(ip+litLen>input.length||op+litLen>out.length) throw new Error('LZ4 literal vượt buffer');
+    out.set(input.subarray(ip,ip+litLen),op);ip+=litLen;op+=litLen;
+    if(ip===input.length) break;
+    if(ip+2>input.length) throw new Error('LZ4 offset thiếu');
+    const offset=input[ip]|(input[ip+1]<<8);ip+=2;
+    if(offset<1||offset>op) throw new Error('LZ4 offset không hợp lệ');
+    const matchLen=readLen(token&15)+4;
+    if(op+matchLen>out.length) throw new Error('LZ4 match vượt output');
+    for(let i=0;i<matchLen;i++) out[op+i]=out[op-offset+i];
+    op+=matchLen;
+  }
+  if(op!==expectedSize) throw new Error('LZ4 output không đúng kích thước');
+  return out;
+}
+function lz4CompressLiteralOnly(input){
+  if(!(input instanceof Uint8Array)) input=new Uint8Array(input);
+  const n=input.length, extra=n<15?0:Math.floor((n-15)/255)+1;
+  const out=new Uint8Array(1+extra+n);let p=0;
+  out[p++]=Math.min(n,15)<<4;
+  if(n>=15){let left=n-15;while(left>=255){out[p++]=255;left-=255;}out[p++]=left;}
+  out.set(input,p);return out;
+}
+function lz4EncodeBlock(input, mode=2){
+  if(mode!==2&&mode!==3) throw new Error('Chỉ hỗ trợ LZ4/LZ4HC block');
+  return lz4CompressLiteralOnly(input);
+}
+function decodeUnityBlock(input, expectedSize, compression){
+  if(compression===0) { if(input.length!==expectedSize) throw new Error('Block uncompressed size mismatch'); return input.slice(); }
+  if(compression===2||compression===3) return lz4DecompressBlock(input,expectedSize);
+  throw new Error('UnityFS compression chưa hỗ trợ trong browser: '+compressionName(compression));
+}
+function parseUnityFS(buf) {
+  try {
+    if(!buf || buf.length<32 || asciiAt(buf,0,7)!=='UnityFS') return null;
+    const view=new DataView(buf.buffer,buf.byteOffset,buf.byteLength), st={pos:8};
+    const formatVersion=be32(view,st.pos); st.pos+=4;
+    if(formatVersion<6 || formatVersion>8) throw new Error('format version ngoài phạm vi an toàn');
+    const unityVersion=readCStringSafe(buf,st), unityRevision=readCStringSafe(buf,st);
+    if(st.pos+20>buf.length) throw new Error('header UnityFS bị cắt');
+    const declaredFileSize=be64(view,st.pos); st.pos+=8;
+    const compressedInfoSize=be32(view,st.pos); st.pos+=4;
+    const uncompressedInfoSize=be32(view,st.pos); st.pos+=4;
+    const flags=be32(view,st.pos); st.pos+=4;
+    if(declaredFileSize===null || !compressedInfoSize || !uncompressedInfoSize || compressedInfoSize>buf.length || uncompressedInfoSize>134217728) throw new Error('kích thước block info không hợp lệ');
+    const infoAtEnd=(flags&0x80)!==0, infoOffset=infoAtEnd?buf.length-compressedInfoSize:st.pos;
+    if(infoOffset<st.pos || infoOffset+compressedInfoSize>buf.length) throw new Error('block info nằm ngoài file');
+    const r={magic:'UnityFS',formatVersion,unityVersion,unityRevision,declaredFileSize,actualFileSize:buf.length,compressedInfoSize,uncompressedInfoSize,flags,compression:compressionName(flags),headerSize:st.pos,infoOffset,infoAtEnd,blockLayout:null,blockLayoutStatus:'unknown',error:null,_buf:buf};
+    // Giải nén block-info bằng đúng codec UnityFS; LZMA vẫn từ chối vì
+    // cần raw-LZMA decoder riêng, không được nhầm với .xz/.lzma container.
+    const infoCompressed=buf.subarray(infoOffset,infoOffset+compressedInfoSize);
+    if(infoCompressed.length<16 || uncompressedInfoSize<16) throw new Error('block-info hash bị cắt');
+    const infoHash=infoCompressed.subarray(0,16);
+    const infoPayload=infoCompressed.subarray(16);
+    const infoMode=flags&0x3f;
+    const decodedInfo=infoMode===0 ? infoPayload : decodeUnityBlock(infoPayload,uncompressedInfoSize-16,infoMode);
+    const infoBytes=new Uint8Array(16+decodedInfo.length); infoBytes.set(infoHash); infoBytes.set(decodedInfo,16);
+    r.blockInfoBytes=infoBytes;
+    if((flags&0x3f)===0 || (flags&0x3f)===2 || (flags&0x3f)===3){
+      let p=0;
+      if(p+20>infoBytes.length) throw new Error('block info quá ngắn');
+      const infoView=new DataView(infoBytes.buffer,infoBytes.byteOffset,infoBytes.byteLength);
+      p+=16; const blockCount=be32(infoView,p); p+=4;
+      if(blockCount>100000 || p+blockCount*12+4>infoBytes.length) throw new Error('block count bất thường');
+      const blocks=[];
+      for(let i=0;i<blockCount;i++){const uncompressedSize=be32(infoView,p);p+=4;const compressedSize=be32(infoView,p);p+=4;const blockFlags=be16(infoView,p);p+=2;p+=2;blocks.push({uncompressedSize,compressedSize,flags:blockFlags});}
+      const nodeCount=be32(infoView,p); if(nodeCount>1000000) throw new Error('node count bất thường');
+      const nodes=[];
+      for(let i=0;i<nodeCount;i++){
+        if(p+20>infoBytes.length) throw new Error('archive node bị cắt');
+        const offset=Number(infoView.getBigUint64(p,false)); p+=8;
+        const size=Number(infoView.getBigUint64(p,false)); p+=8;
+        const nodeFlags=be32(infoView,p); p+=4;
+        const start=p; while(p<infoBytes.length&&infoBytes[p]!==0)p++;
+        if(p>=infoBytes.length) throw new Error('tên archive node bị cắt');
+        const name=new TextDecoder().decode(infoBytes.subarray(start,p)); p++;
+        nodes.push({offset,size,flags:nodeFlags,name});
+      }
+      r.dataOffset=infoAtEnd?st.pos:infoOffset+compressedInfoSize;
+      r.blockLayout={blockCount,nodeCount,blocks,nodes}; r.blockLayoutStatus='known';
+    }
+    return r;
+  } catch(e) { return {magic:'UnityFS',blockLayoutStatus:'invalid',error:e.message||'UnityFS header không hợp lệ'}; }
+}
+function decodeUnityFSContent(bundle){
+  if(!bundle||bundle.blockLayoutStatus!=='known') throw new Error('UnityFS block layout chưa được xác minh');
+  const blocks=bundle.blockLayout.blocks, outSize=blocks.reduce((n,b)=>n+b.uncompressedSize,0);
+  if(outSize>512*1024*1024) throw new Error('Tổng content vượt giới hạn 512 MiB');
+  const raw=new Uint8Array(outSize); let src=bundle.dataOffset, dst=0;
+  for(const block of blocks){
+    if(src+block.compressedSize>bundle._buf.length) throw new Error('Content block nằm ngoài file');
+    const encoded=bundle._buf.subarray(src,src+block.compressedSize);
+    const mode=block.flags&0x3f;
+    const decoded=decodeUnityBlock(encoded,block.uncompressedSize,mode);
+    raw.set(decoded,dst); src+=block.compressedSize; dst+=decoded.length;
+  }
+  return raw;
+}
+function sameRawBlockInfo(a,b){
+  if(!a||!b||a.compressedInfoSize!==b.compressedInfoSize||a.infoOffset<0||b.infoOffset<0) return false;
+  const x=a._buf.subarray(a.infoOffset,a.infoOffset+a.compressedInfoSize), y=b._buf.subarray(b.infoOffset,b.infoOffset+b.compressedInfoSize);
+  if(x.length!==y.length) return false;
+  for(let i=0;i<x.length;i++) if(x[i]!==y[i]) return false;
+  return true;
+}
+function sameUnityBlocks(a,b){
+  if(!a||!b||a.blockLayoutStatus!=='known'||b.blockLayoutStatus!=='known') return false;
+  const x=a.blockLayout,y=b.blockLayout;
+  return x.blockCount===y.blockCount && x.nodeCount===y.nodeCount && x.blocks.every((v,i)=>v.uncompressedSize===y.blocks[i].uncompressedSize&&v.compressedSize===y.blocks[i].compressedSize&&v.flags===y.blocks[i].flags);
+}
+function evaluateUnitySafety(a,b){
+  const ua=parseUnityFS(a.buf), ub=parseUnityFS(b.buf), reasons=[];
+  if(!ua&&!ub) return {ua:null,ub:null,mode:'legacy',safe:a.buf.length===b.buf.length,reasons:a.buf.length===b.buf.length?[]:['Kích thước file khác nhau']};
+  if(!ua||!ub) reasons.push('Một file là UnityFS còn file kia không phải UnityFS');
+  else {
+    if(ua.error||ub.error) reasons.push('Header UnityFS không hợp lệ hoặc bị cắt');
+    if(ua.actualFileSize!==ub.actualFileSize) reasons.push('Kích thước bundle khác nhau');
+    if(ua.declaredFileSize!==ua.actualFileSize||ub.declaredFileSize!==ub.actualFileSize) reasons.push('fileSize trong header không khớp kích thước thực');
+    if(ua.formatVersion!==ub.formatVersion) reasons.push('UnityFS format version khác nhau');
+    if(ua.unityVersion!==ub.unityVersion||ua.unityRevision!==ub.unityRevision) reasons.push('Unity version/revision khác nhau');
+    if(ua.compressedInfoSize!==ub.compressedInfoSize||ua.uncompressedInfoSize!==ub.uncompressedInfoSize) reasons.push('Block info size khác nhau');
+    if(ua.flags!==ub.flags) reasons.push('Compression flags khác nhau');
+    if(ua.blockLayoutStatus!=='known'||ub.blockLayoutStatus!=='known') {
+      if(!sameRawBlockInfo(ua,ub)) reasons.push('Chưa giải nén được block info để xác minh block layout');
+    } else if(!sameUnityBlocks(ua,ub)) reasons.push('Block layout khác nhau');
+  }
+  return {ua,ub,mode:'unityfs',safe:reasons.length===0,reasons};
+}
+function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function unitySummary(u){
+  if(!u) return '<span>Không phải UnityFS</span>';
+  if(u.error) return '<span>UnityFS lỗi: '+esc(u.error)+'</span>';
+  return '<div class="unityfs-grid">'+
+    '<div class="unityfs-item"><b>FORMAT</b><span>'+u.formatVersion+'</span></div>'+
+    '<div class="unityfs-item"><b>UNITY VERSION</b><span>'+esc(u.unityVersion)+' / '+esc(u.unityRevision)+'</span></div>'+
+    '<div class="unityfs-item"><b>FILE SIZE</b><span>'+u.actualFileSize.toLocaleString('vi-VN')+' byte</span></div>'+
+    '<div class="unityfs-item"><b>BLOCK INFO</b><span>'+u.compressedInfoSize+' / '+u.uncompressedInfoSize+' byte</span></div>'+
+    '<div class="unityfs-item"><b>COMPRESSION FLAGS</b><span>0x'+u.flags.toString(16)+' ('+u.compression+')</span></div>'+
+    '<div class="unityfs-item"><b>BLOCK LAYOUT</b><span>'+esc(u.blockLayoutStatus)+(u.blockLayout?' — '+u.blockLayout.blockCount+' block / '+u.blockLayout.nodeCount+' node':'')+'</span></div>'+
+    '</div>';
+}
+
+function wireSlot(dropId, inputId, labelId, slot) {
+  const drop=el(dropId), input=el(inputId);
+  const openPicker=()=>{ try { input.value=''; input.click(); } catch(e) { el('status').innerHTML='<div class="msg bad">Không mở được trình chọn file. Hãy dùng trình duyệt Safari/Chrome mới nhất.</div>'; } };
+  drop.addEventListener('click', openPicker);
+  drop.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+  drop.setAttribute('role','button'); drop.setAttribute('tabindex','0');
+  input.addEventListener('change', e => { const f=e.target.files && e.target.files[0]; if(f) loadFile(f,slot,labelId); });
+  ['dragover','dragleave','drop'].forEach(ev => el(dropId).addEventListener(ev, e => {
+    e.preventDefault();
+    el(dropId).classList.toggle('over', ev === 'dragover');
+    if (ev === 'drop' && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0], slot, labelId);
+  }));
+}
+wireSlot('dropA','fileA','labelA','A');
+wireSlot('dropB','fileB','labelB','B');
+
+async function loadFile(f, slot, labelId) {
+  try {
+    if (!f || typeof f.arrayBuffer !== 'function') throw new Error('File không hợp lệ');
+    const buf = new Uint8Array(await f.arrayBuffer());
+    if (!buf.length) throw new Error('File rỗng');
+    if (slot === 'A') bufA = { buf, name: f.name || 'file-A' }; else bufB = { buf, name: f.name || 'file-B' };
+    el(labelId).textContent = `${f.name || 'file'} — ${buf.length.toLocaleString('vi-VN')} byte`;
+    comparisonReady = false; unitySafety = null; el('patchBtn').disabled = true;
+    el('status').innerHTML = '<div class="msg warn">Đã nạp file. Hãy bấm So sánh 2 File để kiểm tra UnityFS trước khi patch.</div>';
+    el('result').innerHTML = '';
+    el('runBtn').disabled = false;
+  } catch(e) { el('status').innerHTML = `<div class="msg bad">Không thể đọc file: ${esc(e.message)}</div>`; }
+}
+
+el('runBtn').addEventListener('click', () => {
+  if(!bufA || !bufB){ el('status').innerHTML='<div class="msg warn">Vui lòng chọn đủ File Gốc và File Mod trước khi so sánh.</div>'; return; }
+  runDiff();
+});
+el('patchBtn').addEventListener('click', generatePatchedFile);
+
+function runDiff() {
+  if (!bufA || !bufB) {
+    el('status').innerHTML='<div class="msg warn">Vui lòng chọn đủ File Gốc và File Mod trước khi so sánh.</div>';
+    return;
+  }
+  const a = bufA.buf, b = bufB.buf;
+  unitySafety = evaluateUnitySafety(bufA, bufB);
+  comparisonReady = true;
+  const minLen = Math.min(a.length, b.length);
+  diffOffsets = [];
+  let firstDiff = -1;
+  for (let i = 0; i < minLen; i++) {
+    if (a[i] !== b[i]) {
+      diffOffsets.push(i);
+      if (firstDiff < 0) firstDiff = i;
+    }
+  }
+  const sizeDiff = a.length - b.length;
+  const identical = diffOffsets.length === 0 && sizeDiff === 0;
+
+  // Thử nhận diện cấu trúc Unity SerializedFile ở cả 2 file — không bắt buộc, chỉ để làm giàu hiển thị.
+  modelA = safeParseUnity(a);
+  modelB = safeParseUnity(b);
+
+  let statusHtml;
+  if (identical) {
+    statusHtml = `<div class="msg ok">Hai file GIỐNG HỆT NHAU — Không có thông số nào thay đổi.</div>`;
+    el('patchBtn').disabled = true;
+  } else {
+    statusHtml = `<div class="msg bad">Phát hiện ${diffOffsets.length.toLocaleString('vi-VN')} byte khác biệt${sizeDiff !== 0 ? `, chênh lệch kích thước ${Math.abs(sizeDiff).toLocaleString('vi-VN')} byte` : ''}.</div>`;
+    el('patchBtn').disabled = !unitySafety.safe || (unitySafety.mode === 'unityfs' && !wasmCodec.ready && unitySafety.ua && unitySafety.ua.compression !== 'none');
+    if (unitySafety.safe) statusHtml += `<div class="msg ok">${unitySafety.mode === 'unityfs' ? 'UNITYFS / COMPATIBLE' : 'RAW PATCH / SAME SIZE'} — Có thể tạo file mới.</div>`;
+    else statusHtml += `<div class="msg bad"><b>UNITYFS / UNSAFE RAW PATCH</b><br>Header hoặc block layout khác nhau; không patch byte-thô để tránh làm hỏng AssetBundle.<br>${unitySafety.reasons.map(esc).join(' · ')}</div>`;
+  }
+  if (unitySafety.mode === 'unityfs') {
+    const cardClass = unitySafety.safe ? 'compatible' : 'unsafe';
+    statusHtml += `<div class="unityfs-card ${cardClass}"><b>UNITYFS INSPECTION — FILE A</b>${unitySummary(unitySafety.ua)}<hr style="border-color:#292b62;border-width:1px 0 0;margin:12px 0"><b>UNITYFS INSPECTION — FILE B</b>${unitySummary(unitySafety.ub)}</div>`;
+  }
+  if (modelA) {
+    const hasTree = modelA.objects.some(o => o.type && o.type.nodes && o.type.nodes.length);
+    statusHtml += `<div class="msg warn">Đã nhận diện File A là Unity SerializedFile (version ${modelA.header.version}, ${modelA.objects.length.toLocaleString('vi-VN')} object). ${hasTree ? 'Có TypeTree — bảng bên dưới sẽ hiện tên field thật.' : 'Không có TypeTree nhúng sẵn — chỉ hiện theo Object/ClassID, không có tên field.'}</div>`;
+  } else {
+    statusHtml += `<div class="msg warn">Không nhận diện được cấu trúc Unity ở File A — dùng chế độ so sánh hex thuần.</div>`;
+  }
+  el('status').innerHTML = statusHtml;
+
+  if (identical) { el('result').innerHTML = ''; return; }
+
+  const pctDiff = minLen ? (diffOffsets.length / minLen * 100) : 0;
+  el('result').innerHTML = `
+    <div class="stat-grid">
+      <div class="stat ${diffOffsets.length ? 'bad' : ''}"><b>${diffOffsets.length.toLocaleString('vi-VN')}</b><span>Byte khác biệt</span></div>
+      <div class="stat"><b>${firstDiff >= 0 ? '0x'+firstDiff.toString(16) : '—'}</b><span>Offset thay đổi đầu</span></div>
+      <div class="stat"><b>${pctDiff.toFixed(3)}%</b><span>Tỉ lệ thay đổi</span></div>
+      <div class="stat"><b>${sizeDiff === 0 ? 'Bằng nhau' : (sizeDiff>0?'A > B':'B > A')}</b><span>Trạng thái size</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>
+        <span>Hex tại vùng thay đổi</span>
+        <div class="nav" id="hexNav"></div>
+      </h2>
+      <div id="hexArea"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Danh sách các vùng thông số thay đổi (Sẽ được import từ B sang A)</h2>
+      <table class="diffrows">
+        <tr><th>Offset (hex)</th><th>Độ dài</th><th>Giá trị Gốc (A)</th><th>Giá trị Mới từ (B)</th><th>Field / Object</th></tr>
+        <tbody id="diffRows"></tbody>
+      </table>
+    </div>
+  `;
+
+  renderRegions();
+  renderHexAt(firstDiff);
+}
+
+function renderRegions() {
+  const regions = [];
+  let start = null, prev = null;
+  for (const off of diffOffsets) {
+    if (start === null) { start = off; prev = off; continue; }
+    if (off === prev + 1) { prev = off; continue; }
+    regions.push([start, prev]); start = off; prev = off;
+  }
+  if (start !== null) regions.push([start, prev]);
+
+  const MAX_ROWS = 200;
+  const rows = regions.slice(0, MAX_ROWS).map(([s,e]) => {
+    const len = e - s + 1;
+    const a = bytesToHex(bufA.buf.subarray(s, Math.min(e+1, s+8)));
+    const b = bytesToHex(bufB.buf.subarray(s, Math.min(e+1, s+8)));
+    let fieldCell = '<span class="off">—</span>';
+    const desc = modelA ? describeOffset(modelA, bufA.buf, s) : null;
+    if (desc) {
+      fieldCell = `<span title="PathID ${desc.pathId}">${desc.typeName}${desc.fieldPath ? ' › ' + desc.fieldPath : ''}</span>`;
+    }
+    return `<tr onclick="renderHexAt(${s})" style="cursor:pointer">
+      <td class="off">0x${s.toString(16).padStart(8,'0')}</td>
+      <td>${len} byte</td>
+      <td class="hex-a">${a}${len>8?' …':''}</td>
+      <td class="hex-b">${b}${len>8?' …':''}</td>
+      <td>${fieldCell}</td>
+    </tr>`;
+  }).join('');
+  el('diffRows').innerHTML = rows + (regions.length > MAX_ROWS ? `<tr><td colspan="5" class="off">… và ${regions.length - MAX_ROWS} vùng khác</td></tr>` : '');
+}
+
+function bytesToHex(arr) {
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join(' ');
+}
+
+let hexCenter = 0;
+function renderHexAt(offset) {
+  hexCenter = offset;
+  const WINDOW = 256;
+  const start = Math.max(0, offset - 64);
+  el('hexArea').innerHTML = `<div class="hexview">
+    <div><div style="color:var(--muted);font:11px var(--mono);margin-bottom:6px">FILE A (Gốc) — ${esc(bufA.name)}</div><div class="hexbox" id="hexA"></div></div>
+    <div><div style="color:var(--muted);font:11px var(--mono);margin-bottom:6px">FILE B (Nguồn Mod) — ${esc(bufB.name)}</div><div class="hexbox" id="hexB"></div></div>
+  </div>`;
+  renderHexBox('hexA', bufA.buf, start, WINDOW);
+  renderHexBox('hexB', bufB.buf, start, WINDOW);
+  el('hexNav').innerHTML = `<span>offset 0x${offset.toString(16)}</span>`;
+}
+
+function renderHexBox(id, buf, start, windowLen) {
+  const diffSet = new Set(diffOffsets);
+  let html = '';
+  for (let row = start; row < Math.min(buf.length, start + windowLen); row += 16) {
+    let line = `<span class="addr">${row.toString(16).padStart(8,'0')}</span> `;
+    for (let i = 0; i < 16; i++) {
+      const p = row + i;
+      if (p >= buf.length) { line += `<span class="byte">  </span> `; continue; }
+      const isDiff = diffSet.has(p);
+      line += `<span class="byte${isDiff?' diff':''}">${buf[p].toString(16).padStart(2,'0')}</span> `;
+    }
+    html += `<div class="row">${line}</div>`;
+  }
+  el(id).innerHTML = html;
+}
+
+// Tính năng Patcher: Lấy dữ liệu từ file gốc A, chép đè các byte khác biệt từ file B và cho phép tải xuống
+function generatePatchedFile() {
+  if (!bufA || !bufB || !comparisonReady || !unitySafety || !unitySafety.safe) {
+    el('status').innerHTML += '<div class="msg bad" style="margin-top:10px">Patch đã bị khóa vì hai file chưa được xác minh là tương thích.</div>';
+    return;
+  }
+  if (bufA.buf.length !== bufB.buf.length) {
+    el('status').innerHTML += '<div class="msg bad" style="margin-top:10px">Patch bị hủy: kích thước file khác nhau.</div>';
+    return;
+  }
+
+  // Clone lại buffer của file gốc A để giữ nguyên toàn bộ cấu trúc gốc
+  const newBuf = new Uint8Array(bufA.buf);
+  
+  // Chép đè (patch) tất cả các byte từ file B sang file A dựa trên mảng vị trí khác biệt đã check
+  let patchedCount = 0;
+  for (const i of diffOffsets) {
+    if (i < newBuf.length && i < bufB.buf.length) {
+      newBuf[i] = bufB.buf[i];
+      patchedCount++;
+    }
+  }
+
+  // Xử lý trường hợp file B dài hơn file A (nếu có phần dư thừa ở đuôi)
+  // Tạo Blob và kích hoạt tải xuống tự động
+  const blob = new Blob([newBuf], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  
+  // Tên tải xuống giữ nguyên tuyệt đối tên của File A (File Gốc).
+  const outputFileName = bufA.name;
+
+  const aTag = document.createElement('a');
+  aTag.href = url;
+  aTag.download = outputFileName.replace(/[\\/:*?"<>|]/g, "_");
+  document.body.appendChild(aTag);
+  aTag.click();
+  document.body.removeChild(aTag);
+  URL.revokeObjectURL(url);
+
+  // Thông báo thành công
+  let extra = '';
+  if (modelA) {
+    try {
+      const paths = new Set();
+      for (const i of diffOffsets) {
+        const d = describeOffset(modelA, bufA.buf, i);
+        if (d) paths.add(d.typeName + (d.fieldPath ? ' › ' + d.fieldPath : ''));
+        if (paths.size > 30) break;
+      }
+      if (paths.size) {
+        const list = [...paths].slice(0, 30).map(p => `<li>${p}</li>`).join('');
+        extra = `<div class="msg warn" style="margin-top:10px">Các field/object đã bị ghi đè:<ul style="margin:6px 0 0 18px;padding:0">${list}</ul>${paths.size >= 30 ? '<div style="margin-top:4px">… và có thể còn nhiều hơn (đã giới hạn hiển thị).</div>' : ''}</div>`;
+      }
+    } catch (e) { /* không chặn tải file nếu bước mô tả field lỗi */ }
+  }
+  el('status').innerHTML += `<div class="msg ok" style="margin-top:10px">đã tạo thành công ${patchedCount.toLocaleString('vi-VN')} byte ! File mới đã được tải xuống với tên File A: <b>${outputFileName}</b></div>${extra}`;
+}
+</script>
+</body>
+</html>
